@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALPR Web Demo</title>
+    <style>
+        :root {
+            --bg: #f5efe4;
+            --panel: #fffaf2;
+            --ink: #1e1a16;
+            --accent: #0f766e;
+            --accent-dark: #134e4a;
+            --line: #d6c7af;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: Georgia, "Times New Roman", serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at top right, rgba(15,118,110,.18), transparent 25%),
+                linear-gradient(135deg, #f6e7c9, var(--bg));
+            min-height: 100vh;
+        }
+        .wrap {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 32px 20px 48px;
+        }
+        .hero, .panel {
+            background: rgba(255, 250, 242, 0.92);
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(30, 26, 22, 0.08);
+        }
+        .hero {
+            padding: 28px;
+            margin-bottom: 24px;
+        }
+        h1 {
+            margin: 0 0 10px;
+            font-size: clamp(2rem, 5vw, 3.6rem);
+            line-height: 0.95;
+        }
+        p {
+            margin: 0;
+            font-size: 1.05rem;
+            line-height: 1.6;
+        }
+        .panel {
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        form {
+            display: grid;
+            gap: 14px;
+        }
+        input[type="file"] {
+            padding: 14px;
+            border: 1px dashed var(--line);
+            border-radius: 16px;
+            background: white;
+        }
+        button, .button {
+            width: fit-content;
+            border: 0;
+            border-radius: 999px;
+            padding: 12px 18px;
+            background: var(--accent);
+            color: white;
+            text-decoration: none;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        button:hover, .button:hover {
+            background: var(--accent-dark);
+        }
+        .flash {
+            margin-bottom: 16px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: #fff1f2;
+            border: 1px solid #fecdd3;
+            color: #9f1239;
+        }
+        img, video {
+            width: 100%;
+            border-radius: 18px;
+            border: 1px solid var(--line);
+            background: #000;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 18px;
+        }
+        th, td {
+            text-align: left;
+            padding: 12px 10px;
+            border-bottom: 1px solid var(--line);
+        }
+        .muted {
+            color: #57534e;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <section class="hero">
+            <h1>License Plate Recognition</h1>
+            <p>Upload an image or video to run YOLO-based plate detection, OCR the visible text, and download the annotated result.</p>
+        </section>
+
+        <section class="panel">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="flash">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form action="{{ url_for('analyze') }}" method="post" enctype="multipart/form-data">
+                <input type="file" name="file" accept=".jpg,.jpeg,.png,.bmp,.webp,.mp4,.avi,.mov,.mkv" required>
+                <button type="submit">Analyze File</button>
+            </form>
+            <form action="{{ url_for('demo') }}" method="post" style="margin-top: 12px;">
+                <button type="submit" class="button">Try Sample Demo</button>
+            </form>
+            <p class="muted">Render note: large video uploads can take longer to process than images.</p>
+        </section>
+
+        {% if result %}
+            <section class="panel">
+                {% if result.demo_mode == "synthetic" %}
+                    <p class="muted" style="margin-bottom: 14px;">Showing the bundled preview so visitors can test the page instantly on Render without uploading a file.</p>
+                {% elif result.demo_mode == "dataset" %}
+                    <p class="muted" style="margin-bottom: 14px;">Showing the bundled repository sample processed through the ALPR pipeline.</p>
+                {% endif %}
+                <a class="button" href="{{ result_url }}" target="_blank" rel="noopener">Open Result</a>
+
+                {% if result.media_type == "image" %}
+                    <div style="margin-top: 18px;">
+                        <img src="{{ result_url }}" alt="Annotated detection result">
+                    </div>
+                {% else %}
+                    <div style="margin-top: 18px;">
+                        <video controls>
+                            <source src="{{ result_url }}" type="video/mp4">
+                        </video>
+                    </div>
+                {% endif %}
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Plate Text</th>
+                            <th>Confidence</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if result.detections %}
+                            {% for item in result.detections %}
+                                <tr>
+                                    <td>{{ item.plate_text }}</td>
+                                    <td>{{ item.confidence }}</td>
+                                    <td>{% if item.valid_plate %}Logged{% else %}Detected only{% endif %}</td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="3">No detections were found in this file.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </section>
+        {% endif %}
+    </div>
+</body>
+</html>

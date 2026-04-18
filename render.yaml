@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: license-plate-recognition
+    runtime: docker
+    plan: free
+    autoDeploy: true
